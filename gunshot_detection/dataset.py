@@ -13,8 +13,8 @@ class Dataset:
             files = np.core.defchararray.add(dir_path + '/', os.listdir(dir_path))
             np.random.shuffle(files)
             train_size = int(len(files) * train_perc)
-            self.train_files[i] = np.array(files[:train_size])
-            self.test_files[i] = np.array(files[train_size:])
+            self.train_files[i] = files[:train_size]
+            self.test_files[i] = files[train_size:]
 
     def __str__(self):
         data_str = ''
