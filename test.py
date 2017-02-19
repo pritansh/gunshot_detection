@@ -2,12 +2,13 @@ import gunshot_detection as gd
 import numpy as np
 
 dataset = gd.Dataset('./dataset')
+print dataset
 
-files = np.empty(2, dtype='object')
-files[0] = dataset.train_files[0][0:3]
-files[1] = dataset.train_files[1][0:3]
+train_fe = gd.Features(dataset.train_files)
+print train_fe
+test_fe = gd.Features(dataset.test_files)
+print test_fe
 
-fe = gd.Features(files)
-print(fe)
-print(fe.features)
-print(fe.labels)
+net = gd.Network(20, 2, [280, 300])
+print net
+net.train(train=train_fe, test=test_fe)
