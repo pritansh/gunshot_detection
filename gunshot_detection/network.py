@@ -3,6 +3,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 from features import Features
 
+class Layer:
+    
+    def __init__(self, input_type, output_type, type_h, mean, stddev, type=''):
+        self.weight = tf.Variable(tf.random_normal([
+            input_type, output_type], mean=mean, stddev=stddev))
+        self.biases = tf.Variable(tf.random_normal([output_type], mean=mean, stddev=stddev))
+        h = tf.matmul(type_h, self.weight) + self.biases
+        if type == 'tanh':
+            self.h = tf.nn.tanh(h)
+        elif type =='sigmoid':
+            self.h = tf.nn.sigmoid(h)
+        elif type == 'softmax':
+            self.h = tf.nn.softmax(h)
+
+    def tolist(self):
+        return [self.weight, self.biases, self.h]
+
+    def display(self):
+        weight = tf.Print(self.weight, [self.weight], 'Weights:')
+        se = tf.InteractiveSession()
+        se.run(weight)
+
+
 class Network:
 
     def __init__(self, feature_dim, classes, hidden_units=[], learn_rate=0.01):
@@ -13,29 +36,18 @@ class Network:
         stddev = 1/np.sqrt(feature_dim)
         self.input_type = tf.placeholder(tf.float32, [None, feature_dim])
         self.output_type = tf.placeholder(tf.float32, [None, classes])
-        self.layers = [[[], [], []] for i in range(0, length + 1)]
-        self.layers[0][0] = tf.Variable(tf.random_normal([
-            feature_dim, hidden_units[0]], mean=0, stddev=stddev))
-        self.layers[0][1] = tf.Variable(tf.random_normal([hidden_units[0]], mean=0, stddev=stddev))
-        self.layers[0][2] = tf.nn.tanh(
-            tf.matmul(self.input_type, self.layers[0][0]) + self.layers[0][1])
+        self.layers = []
+        self.layers.append(Layer(input_type=self.features_dim, output_type=self.hidden_units[0], 
+                  type_h=self.input_type, mean=0, stddev=stddev, type='tanh'))
         for i in range(1, length):
-            self.layers[i][0] = tf.Variable(tf.random_normal([
-                hidden_units[i-1], hidden_units[i]], mean=0, stddev=stddev))
-            self.layers[i][1] = tf.Variable(tf.random_normal([
-                hidden_units[i]], mean=0, stddev=stddev))
-            self.layers[i][2] = tf.nn.sigmoid(tf.matmul(
-                self.layers[i-1][2], self.layers[i][0]) + self.layers[i][1])
-        self.layers[length][0] = tf.Variable(tf.random_normal([
-            hidden_units[length-1], classes], mean=0, stddev=stddev))
-        self.layers[length][1] = tf.Variable(
-            tf.random_normal([classes], mean=0, stddev=stddev))
-        self.layers[length][2] = tf.nn.softmax(
-            tf.matmul(self.layers[length-1][2], self.layers[length][0]) + self.layers[length][1])
+            self.layers.append(Layer(input_type=self.hidden_units[i-1], output_type=self.hidden_units[i], 
+                      type_h=self.layers[i-1].h, mean=0, stddev=stddev, type='sigmoid'))
+        self.layers.append(Layer(input_type=self.hidden_units[length-1], output_type=self.classes, 
+                  type_h=self.layers[length-1].h, mean=0, stddev=stddev, type='softmax'))
         self.init = tf.global_variables_initializer()
-        self.cost_fxn = tf.reduce_sum(self.output_type * tf.log(self.layers[length][2]))
+        self.cost_fxn = tf.reduce_sum(self.output_type * tf.log(self.layers[length].h))
         self.optimizer = tf.train.GradientDescentOptimizer(learn_rate).minimize(self.cost_fxn)
-        self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.layers[length][2], 1), tf.argmax(self.output_type, 1)), tf.float32))
+        self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.layers[length].h, 1), tf.argmax(self.output_type, 1)), tf.float32))
 
     def train(self, train, test, epochs=5000):
         cost_history = np.empty(shape=[1], dtype=float)
@@ -46,9 +58,8 @@ class Network:
             for epoch in range(epochs):            
                 _,cost = sess.run([self.optimizer, self.cost_fxn], feed_dict={self.input_type:train.features, self.output_type:train.labels})
                 cost_history = np.append(cost_history, cost)
-                print 'Epoch ' + str(epoch) + '->' + str(cost)
     
-            y_pred = sess.run(tf.argmax(self.layers[len(self.layers)][2], 1), feed_dict={self.input_type: test.features})
+            y_pred = sess.run(tf.argmax(self.layers[len(self.layers)-1].h, 1), feed_dict={self.input_type: test.features})
             y_true = sess.run(tf.argmax(test.labels, 1))
             print 'Test accuracy: ', round(sess.run(self.accuracy, feed_dict={self.input_type: test.features, self.output_type: test.labels}), 3)
 
