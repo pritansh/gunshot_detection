@@ -32,3 +32,8 @@ class Features:
         feature_str += '\n\tFeatures -> ' + str(np.shape(self.features)[0])
         feature_str += '\n\tDimensions -> ' + str(self.features_dim)
         return feature_str
+
+    def to_batch(self, batch_size=10):
+        length = np.shape(self.features)[0]
+        self.features = np.split(self.features, range(batch_size, length, batch_size))
+        self.labels = np.split(self.labels, range(batch_size, length, batch_size))
