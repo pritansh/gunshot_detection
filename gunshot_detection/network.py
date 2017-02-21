@@ -20,10 +20,9 @@ class Layer:
     def tolist(self):
         return [self.weight, self.biases, self.h]
 
-    def display(self):
+    def display(self, session):
         weight = tf.Print(self.weight, [self.weight], 'Weights:')
-        se = tf.InteractiveSession()
-        se.run(weight)
+        session.run(weight)
 
 
 class Network:
@@ -44,8 +43,7 @@ class Network:
                       type_h=self.layers[i-1].h, mean=0, stddev=stddev, type='sigmoid'))
         self.layers.append(Layer(input_type=self.hidden_units[length-1], output_type=self.classes, 
                   type_h=self.layers[length-1].h, mean=0, stddev=stddev, type='softmax'))
-        self.init = tf.global_variables_initializer()
-        self.cost_fxn = tf.reduce_sum(self.output_type * tf.log(self.layers[length].h))
+        self.cost_fxn = -tf.reduce_sum(self.output_type * tf.log(tf.clip_by_value(self.layers[length].h, 1e-10, 1.0)))
         self.optimizer = tf.train.GradientDescentOptimizer(learn_rate).minimize(self.cost_fxn)
         self.accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.layers[length].h, 1), tf.argmax(self.output_type, 1)), tf.float32))
 
@@ -54,10 +52,12 @@ class Network:
         y_true, y_pred = None, None
         print 'Training begins'
         with tf.Session() as sess:
-            sess.run(self.init)
-            for epoch in range(epochs):            
-                _,cost = sess.run([self.optimizer, self.cost_fxn], feed_dict={self.input_type:train.features, self.output_type:train.labels})
-                cost_history = np.append(cost_history, cost)
+            sess.run(tf.global_variables_initializer())
+            for epoch in range(epochs):
+                for i in range(0, np.shape(train.features)[0]):
+                    _,cost = sess.run([self.optimizer, self.cost_fxn], feed_dict={self.input_type:train.features[i:i+1], self.output_type:train.labels[i:i+1]})
+                    cost_history = np.append(cost_history, cost)
+                    print np.shape(cost_history), cost
     
             y_pred = sess.run(tf.argmax(self.layers[len(self.layers)-1].h, 1), feed_dict={self.input_type: test.features})
             y_true = sess.run(tf.argmax(test.labels, 1))

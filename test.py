@@ -11,4 +11,4 @@ print test_fe
 
 net = gd.Network(20, 2, [280, 300])
 print net
-net.train(train=train_fe, test=test_fe)
+net.train(train=train_fe, test=test_fe, epochs=1400)
