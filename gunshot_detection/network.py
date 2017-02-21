@@ -1,7 +1,9 @@
-import tensorflow as tf
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
 from features import Features
+
 
 class Layer:
     ''''''
@@ -9,23 +11,17 @@ class Layer:
         self.weight = tf.Variable(tf.random_normal([
             input_type, output_type], mean=mean, stddev=stddev))
         self.biases = tf.Variable(tf.random_normal([output_type], mean=mean, stddev=stddev))
-        h = tf.matmul(type_h, self.weight) + self.biases
-        if type_fxn == 'tanh':
-            self.h = tf.nn.tanh(h)
-        elif type_fxn =='sigmoid':
-            self.h = tf.nn.sigmoid(h)
-        elif type_fxn == 'softmax':
-            self.h = tf.nn.softmax(h)
+        self.logits = tf.matmul(type_h, self.weight) + self.biases
+        self.h = tf.nn.relu(self.logits)
 
 
 class Evaluator:
     ''''''
     def __init__(self, output_type, output_h, learn_rate):
-        self.cost_fxn = tf.reduce_sum(output_type * tf.log(tf.clip_by_value(output_h, 1e-10, 1.0)))
-        self.optimizer = tf.train.GradientDescentOptimizer(learn_rate).minimize(self.cost_fxn)
+        self.cost_fxn = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(output_h, output_type))
+        self.optimizer = tf.train.AdamOptimizer(learn_rate).minimize(self.cost_fxn)
         self.accuracy = tf.reduce_mean(
             tf.cast(tf.equal(tf.argmax(output_h, 1), tf.argmax(output_type, 1)), tf.float32))
-
 
 class Network:
     ''''''
@@ -45,20 +41,18 @@ class Network:
                       type_h=self.layers[i-1].h, mean=0, stddev=stddev, type_fxn='sigmoid'))
         self.layers.append(Layer(input_type=self.hidden_units[length-1], output_type=self.classes, 
                   type_h=self.layers[length-1].h, mean=0, stddev=stddev, type_fxn='softmax'))
-        self.eval = Evaluator(output_type=self.output_type, output_h=self.layers[length].h, learn_rate=learn_rate)
+        self.eval = Evaluator(output_type=self.output_type, output_h=self.layers[length].logits, learn_rate=learn_rate)
 
     def train(self, train, test, epochs=5000, batch_size=10):
         cost_history = np.empty(shape=[1], dtype=float)
         y_true, y_pred = None, None
-        batches = train.to_batch()
         print 'Training begins'
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for epoch in range(epochs):
-                for i in range(0, np.shape(train.features)[0]):
-                    _,cost = sess.run([self.eval.optimizer, self.eval.cost_fxn], feed_dict={self.input_type:train.features[i], self.output_type:train.labels[i]})
-                    cost_history = np.append(cost_history, cost)
-                    print np.shape(cost_history), cost
+                _,cost = sess.run([self.eval.optimizer, self.eval.cost_fxn], feed_dict={self.input_type:train.features, self.output_type:train.labels})
+                cost_history = np.append(cost_history, cost)
+                print epoch, cost
     
             y_pred = sess.run(tf.argmax(self.layers[len(self.layers)-1].h, 1), feed_dict={self.input_type: test.features})
             y_true = sess.run(tf.argmax(test.labels, 1))
