@@ -1,0 +1,5 @@
+setuptools
+tensorflow
+librosa
+numpy
+matplotlib

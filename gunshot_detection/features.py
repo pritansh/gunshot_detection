@@ -3,9 +3,9 @@ from librosa import load, feature
 
 def ind2vec(ind, N=None):
     ind = np.asarray(ind)
-    if N is None: 
+    if N is None:
         N = ind.max() + 1
-    return (np.arange(N) == ind[:,None]).astype(int)
+    return (np.arange(N) == ind[:, None]).astype(int)
 
 class Features:
 

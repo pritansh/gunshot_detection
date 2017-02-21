@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from features import Features
+from gunshot_detection.features import Features
 
 
 class Layer:
@@ -12,20 +12,21 @@ class Layer:
             input_type, output_type], mean=mean, stddev=stddev))
         self.biases = tf.Variable(tf.random_normal([output_type], mean=mean, stddev=stddev))
         self.logits = tf.matmul(type_h, self.weight) + self.biases
-        self.h = tf.nn.relu(self.logits)
+        self.out = tf.nn.relu(self.logits)
 
 
 class Evaluator:
     ''''''
-    def __init__(self, output_type, output_h, learn_rate):
-        self.cost_fxn = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(output_h, output_type))
+    def __init__(self, output_type, output, learn_rate):
+        self.cost_fxn = tf.reduce_sum(
+            tf.nn.softmax_cross_entropy_with_logits(output, output_type))
         self.optimizer = tf.train.AdamOptimizer(learn_rate).minimize(self.cost_fxn)
         self.accuracy = tf.reduce_mean(
-            tf.cast(tf.equal(tf.argmax(output_h, 1), tf.argmax(output_type, 1)), tf.float32))
+            tf.cast(tf.equal(tf.argmax(output, 1), tf.argmax(output_type, 1)), tf.float32))
 
 class Network:
     ''''''
-    def __init__(self, feature_dim, classes, hidden_units=[], learn_rate=0.01):
+    def __init__(self, feature_dim, classes, hidden_units=[280, 300], learn_rate=0.01):
         self.features_dim = feature_dim
         self.classes = classes
         self.hidden_units = hidden_units
@@ -34,35 +35,47 @@ class Network:
         self.input_type = tf.placeholder(tf.float32, [None, feature_dim])
         self.output_type = tf.placeholder(tf.float32, [None, classes])
         self.layers = []
-        self.layers.append(Layer(input_type=self.features_dim, output_type=self.hidden_units[0], 
-                  type_h=self.input_type, mean=0, stddev=stddev, type_fxn='tanh'))
+        self.layers.append(Layer(
+            input_type=self.features_dim, output_type=self.hidden_units[0],
+            type_h=self.input_type, mean=0, stddev=stddev))
         for i in range(1, length):
-            self.layers.append(Layer(input_type=self.hidden_units[i-1], output_type=self.hidden_units[i], 
-                      type_h=self.layers[i-1].h, mean=0, stddev=stddev, type_fxn='sigmoid'))
-        self.layers.append(Layer(input_type=self.hidden_units[length-1], output_type=self.classes, 
-                  type_h=self.layers[length-1].h, mean=0, stddev=stddev, type_fxn='softmax'))
-        self.eval = Evaluator(output_type=self.output_type, output_h=self.layers[length].logits, learn_rate=learn_rate)
+            self.layers.append(Layer(
+                input_type=self.hidden_units[i-1], output_type=self.hidden_units[i],
+                type_h=self.layers[i-1].h, mean=0, stddev=stddev))
+        self.layers.append(Layer(
+            input_type=self.hidden_units[length-1], output_type=self.classes,
+            type_h=self.layers[length-1].h, mean=0, stddev=stddev))
+        self.eval = Evaluator(
+            output_type=self.output_type, output=self.layers[length].logits,
+            learn_rate=learn_rate)
 
-    def train(self, train, test, epochs=5000, batch_size=10):
+    def train(self, train=Features, test=Features, epochs=5000):
+        ''''''
         cost_history = np.empty(shape=[1], dtype=float)
-        y_true, y_pred = None, None
         print 'Training begins'
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for epoch in range(epochs):
-                _,cost = sess.run([self.eval.optimizer, self.eval.cost_fxn], feed_dict={self.input_type:train.features, self.output_type:train.labels})
+                _, cost = sess.run(
+                    [self.eval.optimizer, self.eval.cost_fxn],
+                    feed_dict={self.input_type: train.features, self.output_type: train.labels})
                 cost_history = np.append(cost_history, cost)
                 print epoch, cost
-    
-            y_pred = sess.run(tf.argmax(self.layers[len(self.layers)-1].h, 1), feed_dict={self.input_type: test.features})
-            y_true = sess.run(tf.argmax(test.labels, 1))
-            print 'Test accuracy: ', round(sess.run(self.eval.accuracy, feed_dict={self.input_type: test.features, self.output_type: test.labels}), 3)
+            pred_label = sess.run(
+                tf.argmax(self.layers[len(self.layers)-1].h, 1),
+                feed_dict={self.input_type: test.features})
+            true_label = sess.run(tf.argmax(test.labels, 1))
+            print 'Test accuracy: ', round(sess.run(
+                self.eval.accuracy,
+                feed_dict={self.input_type: test.features, self.output_type: test.labels}), 3)
+            print 'True labels -> ', true_label
+            print 'Predicted labels -> ', pred_label
 
-            fig = plt.figure(figsize=(10, 8))
+            plt.figure(figsize=(10, 8))
             plt.plot(cost_history)
             plt.axis([0, epochs, 0, np.max(cost_history)])
             plt.show()
-        
+
     def __str__(self):
         network_str = 'Neural Network ->'
         network_str += '\nClasses -> ' + str(self.classes)
