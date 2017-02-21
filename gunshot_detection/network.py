@@ -7,11 +7,11 @@ from gunshot_detection.features import Features
 
 class Layer:
     ''''''
-    def __init__(self, input_type, output_type, type_h, mean, stddev, type_fxn=''):
+    def __init__(self, input_type, output_type, type_out, mean, stddev):
         self.weight = tf.Variable(tf.random_normal([
             input_type, output_type], mean=mean, stddev=stddev))
         self.biases = tf.Variable(tf.random_normal([output_type], mean=mean, stddev=stddev))
-        self.logits = tf.matmul(type_h, self.weight) + self.biases
+        self.logits = tf.matmul(type_out, self.weight) + self.biases
         self.out = tf.nn.relu(self.logits)
 
 
@@ -37,14 +37,14 @@ class Network:
         self.layers = []
         self.layers.append(Layer(
             input_type=self.features_dim, output_type=self.hidden_units[0],
-            type_h=self.input_type, mean=0, stddev=stddev))
+            type_out=self.input_type, mean=0, stddev=stddev))
         for i in range(1, length):
             self.layers.append(Layer(
                 input_type=self.hidden_units[i-1], output_type=self.hidden_units[i],
-                type_h=self.layers[i-1].h, mean=0, stddev=stddev))
+                type_out=self.layers[i-1].out, mean=0, stddev=stddev))
         self.layers.append(Layer(
             input_type=self.hidden_units[length-1], output_type=self.classes,
-            type_h=self.layers[length-1].h, mean=0, stddev=stddev))
+            type_out=self.layers[length-1].out, mean=0, stddev=stddev))
         self.eval = Evaluator(
             output_type=self.output_type, output=self.layers[length].logits,
             learn_rate=learn_rate)
@@ -62,7 +62,7 @@ class Network:
                 cost_history = np.append(cost_history, cost)
                 print epoch, cost
             pred_label = sess.run(
-                tf.argmax(self.layers[len(self.layers)-1].h, 1),
+                tf.argmax(self.layers[len(self.layers)-1].out, 1),
                 feed_dict={self.input_type: test.features})
             true_label = sess.run(tf.argmax(test.labels, 1))
             print 'Test accuracy: ', round(sess.run(
