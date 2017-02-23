@@ -2,8 +2,8 @@ import os
 import numpy as np
 
 class Dataset:
-
-    def __init__(self, directory_path='', train_perc=0.8):
+    ''''''
+    def __init__(self, directory_path='', train_perc=0.75):
         self.class_dirs = os.listdir(directory_path)
         classes = len(self.class_dirs)
         self.train_files = np.empty(classes, dtype='object')

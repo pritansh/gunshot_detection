@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import confusion_matrix
 
 from gunshot_detection.features import Features
-
+from gunshot_detection.progress import print_progress
 
 class Layer:
     ''''''
@@ -31,9 +32,9 @@ class Network:
         self.classes = classes
         self.hidden_units = hidden_units
         length = len(hidden_units)
-        stddev = 1/np.sqrt(feature_dim)
-        self.input_type = tf.placeholder(tf.float32, [None, feature_dim])
-        self.output_type = tf.placeholder(tf.float32, [None, classes])
+        stddev = 1/np.sqrt(self.features_dim)
+        self.input_type = tf.placeholder(tf.float32, [None, self.features_dim])
+        self.output_type = tf.placeholder(tf.float32, [None, self.classes])
         self.layers = []
         self.layers.append(Layer(
             input_type=self.features_dim, output_type=self.hidden_units[0],
@@ -52,7 +53,7 @@ class Network:
     def train(self, train=Features, test=Features, epochs=5000):
         ''''''
         cost_history = np.empty(shape=[1], dtype=float)
-        print 'Training begins'
+        print 'Training ->'
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for epoch in range(epochs):
@@ -60,16 +61,22 @@ class Network:
                     [self.eval.optimizer, self.eval.cost_fxn],
                     feed_dict={self.input_type: train.features, self.output_type: train.labels})
                 cost_history = np.append(cost_history, cost)
-                print epoch, cost
-            pred_label = sess.run(
+                print_progress(iteration=epoch, total=epochs)
+            '''pred_label = sess.run(
                 tf.argmax(self.layers[len(self.layers)-1].out, 1),
                 feed_dict={self.input_type: test.features})
-            true_label = sess.run(tf.argmax(test.labels, 1))
-            print 'Test accuracy: ', round(sess.run(
+            true_label = sess.run(tf.argmax(test.labels, 1))'''
+
+            print '\n\nTest accuracy: ', round(sess.run(
                 self.eval.accuracy,
                 feed_dict={self.input_type: test.features, self.output_type: test.labels}), 3)
-            print 'True labels -> ', true_label
-            print 'Predicted labels -> ', pred_label
+
+            '''
+            cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
+            print cnf_max
+
+            print true_label
+            print pred_label'''
 
             plt.figure(figsize=(10, 8))
             plt.plot(cost_history)
@@ -83,23 +90,6 @@ class Network:
         network_str += '\nHidden layer neurons -> '
         for i in range(0, len(self.hidden_units)):
             network_str += '\n\t' + str(i+1)+ ' -> ' + str(self.hidden_units[i])
-        network_str += '\nLayers ->'
-        for i in range(0, len(self.layers)):
-            type_str = 'sigmoid'
-            if i == 0:
-                input_str = str(self.features_dim)
-                type_str = 'tanh'
-            else:
-                input_str = str(self.hidden_units[i-1])
-            if i == len(self.layers) - 1:
-                output_str = str(self.classes)
-                type_str = 'softmax'
-            else:
-                output_str = str(self.hidden_units[i])
-            network_str += '\n\t Layer ' + str(i+1) + ' -> '
-            network_str += '[ Input -> ' + input_str
-            network_str += ', Ouput -> ' + output_str
-            network_str += ', Type -> ' + type_str + ']'
         return network_str
 
     def __repr__(self):
@@ -109,21 +99,4 @@ class Network:
         network_str += '\nHidden layer neurons -> '
         for i in range(0, len(self.hidden_units)):
             network_str += '\n\t' + str(i+1)+ ' -> ' + str(self.hidden_units[i])
-        network_str += '\nLayers ->'
-        for i in range(0, len(self.layers)):
-            type_str = 'sigmoid'
-            if i == 0:
-                input_str = str(self.features_dim)
-                type_str = 'tanh'
-            else:
-                input_str = str(self.hidden_units[i-1])
-            if i == len(self.layers) - 1:
-                output_str = str(self.classes)
-                type_str = 'softmax'
-            else:
-                output_str = str(self.hidden_units[i])
-            network_str += '\n\t Layer ' + str(i+1) + ' -> '
-            network_str += '[ Input -> ' + input_str
-            network_str += ', Ouput -> ' + output_str
-            network_str += ', Type -> ' + type_str + ']'
         return network_str
