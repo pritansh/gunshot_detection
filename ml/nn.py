@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import confusion_matrix
 
-from gunshot_detection.features import Features
-from gunshot_detection.progress import print_progress
+from ml.features import AudioFeatures
+from ml.progress import print_progress
 
 class Layer:
     ''''''
@@ -25,7 +25,42 @@ class Evaluator:
         self.accuracy = tf.reduce_mean(
             tf.cast(tf.equal(tf.argmax(output, 1), tf.argmax(output_type, 1)), tf.float32))
 
-class Network:
+class Trainer:
+    ''''''
+    def __init__(self, input_type, output_type, train, test, eval, epochs=5000):
+        cost_history = np.empty(shape=[1], dtype=float)
+        print 'Training ->'
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            for epoch in range(epochs):
+                _, cost = sess.run(
+                    [eval.optimizer, eval.cost_fxn],
+                    feed_dict={input_type: train.features, output_type: train.labels})
+                cost_history = np.append(cost_history, cost)
+                print_progress(iteration=epoch, total=epochs)
+            '''pred_label = sess.run(
+                tf.argmax(self.layers[len(self.layers)-1].out, 1),
+                feed_dict={self.input_type: test.features})
+            true_label = sess.run(tf.argmax(test.labels, 1))'''
+
+            print '\n\nTest accuracy: ', round(sess.run(
+                eval.accuracy,
+                feed_dict={input_type: test.features, output_type: test.labels}), 3)
+
+            '''
+            cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
+            print cnf_max
+
+            print true_label
+            print pred_label'''
+
+            plt.figure(figsize=(10, 8))
+            plt.plot(cost_history)
+            plt.axis([0, epochs, 0, np.max(cost_history)])
+            plt.show()
+
+
+class MLP:
     ''''''
     def __init__(self, feature_dim, classes, hidden_units=[280, 300], learn_rate=0.01):
         self.features_dim = feature_dim
@@ -50,52 +85,24 @@ class Network:
             output_type=self.output_type, output=self.layers[length].logits,
             learn_rate=learn_rate)
 
-    def train(self, train=Features, test=Features, epochs=5000):
+    def train(self, train=AudioFeatures, test=AudioFeatures, epochs=5000):
         ''''''
-        cost_history = np.empty(shape=[1], dtype=float)
-        print 'Training ->'
-        with tf.Session() as sess:
-            sess.run(tf.global_variables_initializer())
-            for epoch in range(epochs):
-                _, cost = sess.run(
-                    [self.eval.optimizer, self.eval.cost_fxn],
-                    feed_dict={self.input_type: train.features, self.output_type: train.labels})
-                cost_history = np.append(cost_history, cost)
-                print_progress(iteration=epoch, total=epochs)
-            '''pred_label = sess.run(
-                tf.argmax(self.layers[len(self.layers)-1].out, 1),
-                feed_dict={self.input_type: test.features})
-            true_label = sess.run(tf.argmax(test.labels, 1))'''
-
-            print '\n\nTest accuracy: ', round(sess.run(
-                self.eval.accuracy,
-                feed_dict={self.input_type: test.features, self.output_type: test.labels}), 3)
-
-            '''
-            cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
-            print cnf_max
-
-            print true_label
-            print pred_label'''
-
-            plt.figure(figsize=(10, 8))
-            plt.plot(cost_history)
-            plt.axis([0, epochs, 0, np.max(cost_history)])
-            plt.show()
+        Trainer(input_type=self.input_type, output_type=self.output_type,
+                train=train, test=test, eval=self.eval, epochs=epochs)
 
     def __str__(self):
-        network_str = 'Neural Network ->'
+        network_str = 'Multilayer Perceptron ->'
         network_str += '\nClasses -> ' + str(self.classes)
-        network_str += '\nFeatures Dimensions -> ' + str(self.features_dim)
+        network_str += '\nInput -> ' + str(self.features_dim)
         network_str += '\nHidden layer neurons -> '
         for i in range(0, len(self.hidden_units)):
             network_str += '\n\t' + str(i+1)+ ' -> ' + str(self.hidden_units[i])
         return network_str
 
     def __repr__(self):
-        network_str = 'Neural Network ->'
+        network_str = 'Multilayer Perceptron ->'
         network_str += '\nClasses -> ' + str(self.classes)
-        network_str += '\nFeatures Dimensions -> ' + str(self.features_dim)
+        network_str += '\nInput -> ' + str(self.features_dim)
         network_str += '\nHidden layer neurons -> '
         for i in range(0, len(self.hidden_units)):
             network_str += '\n\t' + str(i+1)+ ' -> ' + str(self.hidden_units[i])

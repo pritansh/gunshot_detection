@@ -1,7 +1,7 @@
 import numpy as np
 from librosa import load, feature
 
-from gunshot_detection.progress import print_progress
+from ml.progress import print_progress
 
 def ind2vec(ind, N=None):
     ''''''
@@ -10,7 +10,7 @@ def ind2vec(ind, N=None):
         N = ind.max() + 1
     return (np.arange(N) == ind[:, None]).astype(int)
 
-class Features:
+class AudioFeatures:
     ''''''
     def __init__(self, files, feature_reduction='', dims=20, vector_reduction='mean'):
         self.classes = len(files)
@@ -44,13 +44,13 @@ class Features:
         self.labels = np.array(self.labels, dtype='int')
 
     def __str__(self):
-        feature_str = 'Feature Vector for ' + str(self.classes) + ' Classes'
+        feature_str = 'Audio Feature Vector for ' + str(self.classes) + ' Classes'
         feature_str += '\n\tFeatures -> ' + str(np.shape(self.features)[0])
         feature_str += '\n\tDimensions -> ' + str(self.features_dim)
         return feature_str
 
     def __repr__(self):
-        feature_str = 'Feature Vector for ' + str(self.classes) + ' Classes'
+        feature_str = 'Audio Feature Vector for ' + str(self.classes) + ' Classes'
         feature_str += '\n\tFeatures -> ' + str(np.shape(self.features)[0])
         feature_str += '\n\tDimensions -> ' + str(self.features_dim)
         return feature_str
