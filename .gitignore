@@ -2,3 +2,5 @@ genres/
 dataset/
 *.gz
 *.pyc
+kartik/
+features/

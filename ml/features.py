@@ -1,5 +1,7 @@
 import numpy as np
 from librosa import load, feature
+from sklearn.decomposition import PCA
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 from ml.progress import print_progress
 
@@ -12,7 +14,11 @@ def ind2vec(ind, N=None):
 
 class AudioFeatures:
     ''''''
-    def __init__(self, files, feature_reduction='', dims=20, vector_reduction='mean'):
+    def __init__(self, files=np.array([]), filename='', dims=20,
+                 feature_reduction='', reduction_size=10, vector_reduction='mean'):
+        if len(filename) > 0:
+            self.load(filename)
+            return
         self.classes = len(files)
         self.features_dim = dims
         total_files = [len(e) for e in files]
@@ -42,6 +48,19 @@ class AudioFeatures:
                 print_progress(iteration=done, total=total)
         self.features = np.array(self.features)
         self.labels = np.array(self.labels, dtype='int')
+        if feature_reduction == 'pca':
+            pca_clf = PCA(n_components=reduction_size).fit(self.features)
+            self.features = pca_clf.transform(self.features)
+
+    def save(self, filename=''):
+        np.save(filename + '-features.npy', self.features)
+        np.save(filename + '-labels.npy', self.labels)
+
+    def load(self, filename):
+        self.features = np.load(filename + '-features.npy')
+        self.labels = np.load(filename + '-labels.npy')
+        self.features_dim = len(self.features[0])
+        self.classes = len(self.labels[0])
 
     def __str__(self):
         feature_str = 'Audio Feature Vector for ' + str(self.classes) + ' Classes'

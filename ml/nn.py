@@ -27,7 +27,7 @@ class Evaluator:
 
 class Trainer:
     ''''''
-    def __init__(self, input_type, output_type, train, test, eval, epochs=5000):
+    def __init__(self, input_type, output_type, layers, train, test, eval, epochs=5000):
         cost_history = np.empty(shape=[1], dtype=float)
         print 'Training ->'
         with tf.Session() as sess:
@@ -39,25 +39,38 @@ class Trainer:
                 cost_history = np.append(cost_history, cost)
                 print_progress(iteration=epoch, total=epochs)
             '''pred_label = sess.run(
-                tf.argmax(self.layers[len(self.layers)-1].out, 1),
-                feed_dict={self.input_type: test.features})
+                tf.argmax(layers[len(layers)-1].out, 1),
+                feed_dict={input_type: test.features})
             true_label = sess.run(tf.argmax(test.labels, 1))'''
 
-            print '\n\nTest accuracy: ', round(sess.run(
+            self.test_accuracy = round(sess.run(
                 eval.accuracy,
                 feed_dict={input_type: test.features, output_type: test.labels}), 3)
+            print '\n\nTest accuracy: ', self.test_accuracy
 
-            '''
-            cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
+            '''cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
             print cnf_max
 
             print true_label
-            print pred_label'''
+            print pred_label
 
-            plt.figure(figsize=(10, 8))
-            plt.plot(cost_history)
-            plt.axis([0, epochs, 0, np.max(cost_history)])
-            plt.show()
+            p = Plotter(size=(10, 8))
+            p.plot(data=cost_history, axis=[0,epochs, 0, cost_history])'''
+
+    def getAccuracy(self):
+        ''''''
+        return self.test_accuracy
+
+
+class Plotter:
+    
+    def __init__(self, size):
+        plt.figure(figsize=size)
+    
+    def plot(self, data, axis):
+        plt.plot(data)
+        plt.axis(axis)
+        plt.show()
 
 
 class MLP:
@@ -87,8 +100,8 @@ class MLP:
 
     def train(self, train=AudioFeatures, test=AudioFeatures, epochs=5000):
         ''''''
-        Trainer(input_type=self.input_type, output_type=self.output_type,
-                train=train, test=test, eval=self.eval, epochs=epochs)
+        return Trainer(input_type=self.input_type, output_type=self.output_type, layers=self.layers,
+                       train=train, test=test, eval=self.eval, epochs=epochs).getAccuracy()
 
     def __str__(self):
         network_str = 'Multilayer Perceptron ->'
