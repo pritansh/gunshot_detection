@@ -1,23 +1,37 @@
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gs
 import numpy as np
 
-fig = plt.figure(figsize=(20, 20))
-g = gs.GridSpec(5, 2)
+fig, ax = plt.subplots(nrows=6, ncols=2, figsize=(6, 6), sharex=True, sharey=True)
 
-fig.set_xlabel('X')
-fig.set_ylabel('Y')
+data = np.load('./features/final-accuracy.npy')
+data = np.reshape(data, (10, -1, 7))
 
-data = np.empty((0, 20))
-for i in range(0, 10):
-    data = np.vstack([data, np.random.randn(20)])
+labels = ['Mean', 'Mean PCA', 'Var', 'Var PCA', 'IQR', 'IQR PCA']
+lines = []
+layer = 0
 
-plots = []
+for i in range(0, 6):
+    for j in range(0, 2):
+        if i == 0:
+            ax[i, j].set_frame_on(False)
+            ax[i, j].get_xaxis().set_visible(False)
+            ax[i, j].get_yaxis().set_visible(False)
+        else:
+            ax[i, j].set_xlim([1, 6])
+            ax[i, j].set_ylim([0.5, 1.0])
+            title = str(layer+1) + ' Hidden Layer'
+            if layer+1 > 1:
+                title += 's'
+            layer += 1
+            ax[i, j].set_title(title)
+            for k in range(0, 6):
+                temp = ax[i, j].plot(data[:][i][k], label=labels[k])
+                if i == 5:
+                    lines.append(temp[0])
 
-for i in range(0, 10):
-    plots.append(fig.add_subplot(5, 2, i+1))
-    plots[i].set_xlim([0, 20])
-    plots[i].set_ylim([-2, 2])
-    plots[i].plot(data[:][i])
-
+fig.text(0.5, 0.005, 'Number of neurons * 50', horizontalalignment='center')
+fig.text(0.005, 0.5, 'Accuracy', verticalalignment='center', rotation='vertical')
+plt.ylabel('Accuracy')
+plt.tight_layout()
+plt.figlegend(lines, labels,'upper center', ncol=3, bbox_to_anchor=(0.5, 0.95))
 plt.show()

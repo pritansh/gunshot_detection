@@ -4,3 +4,4 @@ dataset/
 *.pyc
 kartik/
 features/
+.vscode/

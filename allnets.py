@@ -39,4 +39,4 @@ for i in range(0, len(conf)):
 print accuracy
 
 final_accuracy = np.array(accuracy)
-np.save('./features/accuracy.npy')
+np.save('./features/accuracy.npy', final_accuracy)
