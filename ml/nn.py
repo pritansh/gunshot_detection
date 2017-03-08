@@ -20,7 +20,7 @@ class Evaluator:
     ''''''
     def __init__(self, output_type, output, learn_rate):
         self.cost_fxn = tf.reduce_sum(
-            tf.nn.softmax_cross_entropy_with_logits(output, output_type))
+            tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=output_type))
         self.optimizer = tf.train.AdamOptimizer(learn_rate).minimize(self.cost_fxn)
         self.accuracy = tf.reduce_mean(
             tf.cast(tf.equal(tf.argmax(output, 1), tf.argmax(output_type, 1)), tf.float32))
