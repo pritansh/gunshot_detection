@@ -14,21 +14,24 @@ def ind2vec(ind, N=None):
 
 class AudioFeatures:
     ''''''
-    def __init__(self, files=np.array([]), filename='', dims=20,
+    def __init__(self, files=np.array([]), filename='', dims=20, class_dirs=[],
                  feature_reduction='', reduction_size=10, vector_reduction='mean'):
+        if len(class_dirs) > 0:
+            self.load_classes(filename, class_dirs)
+            return
         if len(filename) > 0:
             self.load(filename)
             return
         self.classes = len(files)
         self.features_dim = dims
-        total_files = [len(e) for e in files]
+        self.total_files = np.array([len(e) for e in files])
         done = 0
-        total = sum(total_files)
+        total = np.sum(self.total_files)
         self.features = np.empty((0, self.features_dim))
         self.labels = np.zeros((0, self.classes))
         print 'Extracting Features ->'
         for i in range(0, self.classes):
-            for j in range(0, total_files[i]):
+            for j in range(0, self.total_files[i]):
                 samples, rate = np.array(load(files[i][j]))
                 mfcc = feature.mfcc(y=samples, sr=rate).T
                 if vector_reduction == 'mean':
@@ -56,9 +59,33 @@ class AudioFeatures:
         np.save(filename + '-features.npy', self.features)
         np.save(filename + '-labels.npy', self.labels)
 
+    def save_classes(self, filename='', class_dirs=[]):
+        csum = np.cumsum(self.total_files)
+        for i in range(0, self.classes):
+            if i == 0:
+                min_row, max_row = (0, csum[i])
+            elif i == self.classes - 1:
+                min_row, max_row = (csum[i-1], len(self.features))
+            else:
+                min_row, max_row = (csum[i-1], csum[i])
+            name = filename + '-' + class_dirs[i]
+            np.save(name + '-features.npy', self.features[min_row:max_row][:])
+            np.save(name + '-labels.npy', self.features[min_row:max_row][:])
+
     def load(self, filename):
         self.features = np.load(filename + '-features.npy')
         self.labels = np.load(filename + '-labels.npy')
+        self.features_dim = len(self.features[0])
+        self.classes = len(self.labels[0])
+
+    def load_classes(self, filename, class_dirs):
+        name = filename + '-' + class_dirs[0]
+        self.features = np.load(name + '-features.npy')
+        self.labels = np.load(name + '-labels.npy')
+        for i in range(1, len(class_dirs)):
+            name = filename + '-' + class_dirs[i]
+            self.features = np.vstack([self.features, np.load(name + '-features.npy')])
+            self.labels = np.vstack([self.labels, np.load(name + '-labels.npy')])
         self.features_dim = len(self.features[0])
         self.classes = len(self.labels[0])
 
