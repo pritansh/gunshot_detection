@@ -12,7 +12,7 @@ setup(name='Gunshot Detection using NN',
           'setuptools',
           'tensorflow',
           'librosa',
-          'numpy',
+          'numpy==1.10.1',
           'matplotlib',
           'setuptools'
       ])

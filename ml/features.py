@@ -7,12 +7,22 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 from ml.progress import print_progress
 
-def ind2vec(ind, N=None):
-    ''''''
+def ind2vec(ind, classes=None):
+    '''
+        Function to convert indices to matrix form.
+        ind = indices -> list
+        classes = number of classes -> int
+        Example :->
+            indices = [0, 1, 2, 3] , classes = 4
+            returns matrix form = [[1, 0, 0, 0],
+                                   [0, 1, 0, 0],
+                                   [0, 0, 1, 0],
+                                   [0, 0, 0, 1]]
+    '''
     ind = np.asarray(ind)
-    if N is None:
-        N = ind.max() + 1
-    return (np.arange(N) == ind[:, None]).astype(int)
+    if classes is None:
+        classes = ind.max() + 1
+    return (np.arange(classes) == ind[:, None]).astype(int)
 
 class FeaturesConfig:
     ''''''
@@ -25,9 +35,19 @@ class FeaturesConfig:
     def __str__(self):
         f_cfg_str = 'Features Config ->'
         f_cfg_str += '\n\tFeatures -> ' + str(self.features)
-        f_cfg_str += '\n\tCoeff -> ' + str(
-            (('MFCC', self.mfcc_coeff), ('Chroma', self.chroma_coeff),
-             ('Poly order', self.poly_order)))
+        coeff_str = ''
+        if 'mfcc' in self.features:
+            coeff_str += str(('MFCC', self.mfcc_coeff))
+        if 'c_stft' in self.features or 'c_cqt' in self.features or 'c_cens' in self.features:
+            if len(coeff_str) != 0:
+                coeff_str += ', '
+            coeff_str += str(('Chroma', self.chroma_coeff))
+        if 'poly' in self.features:
+            if len(coeff_str) != 0:
+                coeff_str += ', '
+            coeff_str += str(('Poly', self.poly_order))
+        if len(coeff_str) != 0:
+            f_cfg_str += '\n\tCoeff -> (' + coeff_str + ')'
         return f_cfg_str
 
     def __repr__(self):
@@ -36,16 +56,21 @@ class FeaturesConfig:
 
 class ReductionConfig:
     ''''''
-    def __init__(self, feature_reduction=None, reduction_size=10, vector_reduction='mean'):
+    def __init__(self, feature_reduction=None, reduction_size=10,
+                 vector_reduction='mean', iqr_coeff=50):
         self.feature_reduction = feature_reduction
         self.reduction_size = reduction_size
         self.vector_reduction = vector_reduction
+        self.iqr_coeff = iqr_coeff
 
     def __str__(self):
         r_cfg_str = 'Reduction Config ->'
         r_cfg_str += '\n\tFeature Reduction -> ' + str(self.feature_reduction)
-        r_cfg_str += '\n\tReduction size -> ' + str(self.reduction_size)
+        if self.feature_reduction != 'lda':
+            r_cfg_str += '\n\tReduction size -> ' + str(self.reduction_size)
         r_cfg_str += '\n\tVector Reduction -> ' + self.vector_reduction
+        if self.vector_reduction == 'iqr':
+            r_cfg_str += '\n\t\t IQR Coeff -> ' + str(self.iqr_coeff)
         return r_cfg_str
 
     def __repr__(self):
@@ -69,25 +94,25 @@ class AudioFeatures:
                  reduction_cfg=ReductionConfig(
                      feature_reduction='', reduction_size=10, vector_reduction='mean')):
         self.functions = {
-            'chroma_stft': [
-                dict(y=None, sr=None, n_chroma=None),
-                feature.chroma_stft, features_cfg.chroma_coeff],
-            #'chroma_cqt': feature.chroma_cqt,
-            #'chrome_cens': feature.chroma_cens,
-            'melspectrogram': [dict(y=None, sr=None), feature.melspectrogram, 128],
+            'c_stft': [dict(y=None, sr=None, n_chroma=None),
+                       feature.chroma_stft, features_cfg.chroma_coeff],
+            'c_cqt': [dict(y=None, sr=None, n_chroma=None),
+                      feature.chroma_cqt, features_cfg.chroma_coeff],
+            'c_cens': [dict(y=None, sr=None, n_chroma=None),
+                       feature.chroma_cens, features_cfg.chroma_coeff],
+            'mel_spec': [dict(y=None, sr=None), feature.melspectrogram, 128],
             'mfcc': [dict(y=None, sr=None, n_mfcc=None), feature.mfcc, features_cfg.mfcc_coeff],
             'rmse': [dict(y=None), feature.rmse, 1],
-            'spectral_bandwidth': [dict(y=None, sr=None), feature.spectral_bandwidth, 1],
-            'spectral_centroid': [dict(y=None, sr=None), feature.spectral_centroid, 1],
-            'spectral_contrast': [dict(y=None, sr=None), feature.spectral_contrast, 1],
-            'spectral_rolloff': [dict(y=None, sr=None), feature.spectral_rolloff, 1],
-            'poly_features': [
-                dict(y=None, sr=None, order=None),
-                feature.poly_features, features_cfg.poly_order+1],
-            #'tonnetz': feature.tonnetz,
+            'bandwidth': [dict(y=None, sr=None), feature.spectral_bandwidth, 1],
+            'centroid': [dict(y=None, sr=None), feature.spectral_centroid, 1],
+            'contrast': [dict(y=None, sr=None), feature.spectral_contrast, 1],
+            'rolloff': [dict(y=None, sr=None), feature.spectral_rolloff, 1],
+            'poly': [dict(y=None, sr=None, order=None),
+                     feature.poly_features, features_cfg.poly_order+1],
+            'tonnetz': [dict(y=None, sr=None), feature.tonnetz, 6],
             'zcr': [dict(y=None), feature.zero_crossing_rate, 1],
             'mean': [[None, 0], np.mean],
-            'iqr': [[None, 50, 0], np.percentile],
+            'iqr': [[None, None, 0], np.percentile],
             'var': [[None, 0], np.var],
             'pca': [dict(X=None), PCA],
             'ipca': [dict(X=None), IPCA],
@@ -114,10 +139,10 @@ class AudioFeatures:
     def extract(self, class_dirs=None, filename=None):
         ''''''
         if class_dirs != None:
-            self.load_classes(filename, class_dirs)
+            self.load(filename=filename, class_dirs=class_dirs)
             return
         if filename != None:
-            self.load(filename)
+            self.load(filename=filename)
             return
         done = 0
         total = np.sum(self.data_info.total_files)
@@ -140,6 +165,8 @@ class AudioFeatures:
                 vector = vector.T
                 reduction = self.functions[self.data_info.reduction_config.vector_reduction]
                 reduction[0][0] = vector
+                if len(reduction[0]) > 2:
+                    reduction[0][1] = self.data_info.reduction_config.iqr_coeff
                 vector = reduction[1](*reduction[0])
                 self.features = np.vstack([
                     self.features, vector])
@@ -147,10 +174,10 @@ class AudioFeatures:
                     self.class_labels = np.append(self.class_labels, np.repeat(i, len(vector[0])))
                     self.labels = np.vstack([
                         self.labels, ind2vec(
-                            np.repeat(i, len(vector[0])), N=self.classes)])
+                            ind=np.repeat(i, len(vector[0])), classes=self.classes)])
                 else:
                     self.class_labels = np.append(self.class_labels, i)
-                    self.labels = np.vstack([self.labels, ind2vec([i], N=self.classes)])
+                    self.labels = np.vstack([self.labels, ind2vec(ind=[i], classes=self.classes)])
                 done += 1
                 print_progress(iteration=done, total=total)
         self.features = np.array(self.features)
@@ -165,37 +192,37 @@ class AudioFeatures:
             self.features_dim = np.shape(self.features)[1]
         return self
 
-    def save(self, filename=''):
-        np.save(filename + '-features.npy', self.features)
-        np.save(filename + '-labels.npy', self.labels)
+    def save(self, filename=None, class_dirs=None):
+        ''''''
+        if class_dirs != None:
+            csum = np.cumsum(self.data_info.total_files)
+            for i in range(0, self.classes):
+                if i == 0:
+                    min_row, max_row = (0, csum[i])
+                elif i == self.classes - 1:
+                    min_row, max_row = (csum[i-1], len(self.features))
+                else:
+                    min_row, max_row = (csum[i-1], csum[i])
+                name = filename + '-' + class_dirs[i]
+                np.save(name + '-features.npy', self.features[min_row:max_row][:])
+                np.save(name + '-labels.npy', self.labels[min_row:max_row][:])
+        else:
+            np.save(filename + '-features.npy', self.features)
+            np.save(filename + '-labels.npy', self.labels)
 
-    def save_classes(self, filename='', class_dirs=[]):
-        csum = np.cumsum(self.data_info.total_files)
-        for i in range(0, self.classes):
-            if i == 0:
-                min_row, max_row = (0, csum[i])
-            elif i == self.classes - 1:
-                min_row, max_row = (csum[i-1], len(self.features))
-            else:
-                min_row, max_row = (csum[i-1], csum[i])
-            name = filename + '-' + class_dirs[i]
-            np.save(name + '-features.npy', self.features[min_row:max_row][:])
-            np.save(name + '-labels.npy', self.labels[min_row:max_row][:])
-
-    def load(self, filename):
-        self.features = np.load(filename + '-features.npy')
-        self.labels = np.load(filename + '-labels.npy')
-        self.features_dim = len(self.features[0])
-        self.classes = len(self.labels[0])
-
-    def load_classes(self, filename, class_dirs):
-        name = filename + '-' + class_dirs[0]
-        self.features = np.load(name + '-features.npy')
-        self.labels = np.load(name + '-labels.npy')
-        for i in range(1, len(class_dirs)):
-            name = filename + '-' + class_dirs[i]
-            self.features = np.vstack([self.features, np.load(name + '-features.npy')])
-            self.labels = np.vstack([self.labels, np.load(name + '-labels.npy')])
+    def load(self, filename=None, class_dirs=None):
+        ''''''
+        if class_dirs != None:
+            name = filename + '-' + class_dirs[0]
+            self.features = np.load(name + '-features.npy')
+            self.labels = np.load(name + '-labels.npy')
+            for i in range(1, len(class_dirs)):
+                name = filename + '-' + class_dirs[i]
+                self.features = np.vstack([self.features, np.load(name + '-features.npy')])
+                self.labels = np.vstack([self.labels, np.load(name + '-labels.npy')])
+        else:
+            self.features = np.load(filename + '-features.npy')
+            self.labels = np.load(filename + '-labels.npy')
         self.features_dim = len(self.features[0])
         self.classes = len(self.labels[0])
 
