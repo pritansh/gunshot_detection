@@ -4,11 +4,12 @@ import numpy as np
 dataset = ml.Dataset('./dataset')
 print dataset
 
-fcd = dict(features=['mfcc', 'zcr', 'poly_features'], mfcc_coeff=13, poly_order=2)
+fcd = dict(features=['mfcc'], mfcc_coeff=13)
 fc = ml.FeaturesConfig(**fcd)
 print fc
 
-rc = ml.ReductionConfig()
+rcd = dict(feature_reduction='lda')
+rc = ml.ReductionConfig(**rcd)
 print rc
 
 train_fe = ml.AudioFeatures(files=dataset.train_files, features_cfg=fc, reduction_cfg=rc).extract()

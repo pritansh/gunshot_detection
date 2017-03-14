@@ -1,6 +1,8 @@
 import numpy as np
 from librosa import load, feature
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, IncrementalPCA as IPCA, KernelPCA as KPCA
+from sklearn.decomposition import FastICA as FICA, TruncatedSVD as TSVD, NMF, SparsePCA as SPCA
+from sklearn.cross_decomposition import CCA, PLSSVD
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
 from ml.progress import print_progress
@@ -34,14 +36,14 @@ class FeaturesConfig:
 
 class ReductionConfig:
     ''''''
-    def __init__(self, feature_reduction='', reduction_size=10, vector_reduction='mean'):
+    def __init__(self, feature_reduction=None, reduction_size=10, vector_reduction='mean'):
         self.feature_reduction = feature_reduction
         self.reduction_size = reduction_size
         self.vector_reduction = vector_reduction
 
     def __str__(self):
         r_cfg_str = 'Reduction Config ->'
-        r_cfg_str += '\n\tFeature Reduction -> ' + self.feature_reduction
+        r_cfg_str += '\n\tFeature Reduction -> ' + str(self.feature_reduction)
         r_cfg_str += '\n\tReduction size -> ' + str(self.reduction_size)
         r_cfg_str += '\n\tVector Reduction -> ' + self.vector_reduction
         return r_cfg_str
@@ -86,7 +88,17 @@ class AudioFeatures:
             'zcr': [dict(y=None), feature.zero_crossing_rate, 1],
             'mean': [[None, 0], np.mean],
             'iqr': [[None, 50, 0], np.percentile],
-            'var': [[None, 0], np.var]
+            'var': [[None, 0], np.var],
+            'pca': [dict(X=None), PCA],
+            'ipca': [dict(X=None), IPCA],
+            'kpca': [dict(X=None), KPCA],
+            'fica': [dict(X=None), FICA],
+            'tsvd': [dict(X=None), TSVD],
+            'nmf': [dict(X=None), NMF],
+            'spca': [dict(X=None), SPCA],
+            'cca': [dict(X=None), CCA],
+            'plssvd': [dict(X=None), PLSSVD],
+            'lda': [dict(X=None, y=None), LDA]
         }
         self.data_info = Info(
             files=files, features_config=features_cfg, reduction_config=reduction_cfg, info=[])
@@ -96,7 +108,8 @@ class AudioFeatures:
             self.features_dim += self.functions[ftr][2]
             self.data_info.info.append((ftr, self.functions[ftr][2]))
         self.features = np.empty((0, self.features_dim))
-        self.labels = np.zeros((0, self.classes))
+        self.labels = np.empty((0, self.classes))
+        self.class_labels = np.empty(0, dtype=int)
 
     def extract(self, class_dirs=None, filename=None):
         ''''''
@@ -131,19 +144,25 @@ class AudioFeatures:
                 self.features = np.vstack([
                     self.features, vector])
                 if vector.ndim > 1:
+                    self.class_labels = np.append(self.class_labels, np.repeat(i, len(vector[0])))
                     self.labels = np.vstack([
                         self.labels, ind2vec(
                             np.repeat(i, len(vector[0])), N=self.classes)])
                 else:
+                    self.class_labels = np.append(self.class_labels, i)
                     self.labels = np.vstack([self.labels, ind2vec([i], N=self.classes)])
                 done += 1
                 print_progress(iteration=done, total=total)
         self.features = np.array(self.features)
         self.labels = np.array(self.labels, dtype='int')
-        if self.data_info.reduction_config.feature_reduction == 'pca':
-            pca_clf = PCA(
-                n_components=self.data_info.reduction_config.reduction_size).fit(self.features)
-            self.features = pca_clf.transform(self.features)
+        if self.data_info.reduction_config.feature_reduction != None:
+            params = dict(X=self.features, y=self.class_labels)
+            fxn = self.functions[self.data_info.reduction_config.feature_reduction]
+            fxn[0] = {k: params[k] for k, v in fxn[0].iteritems()}
+            self.features = fxn[1](
+                n_components=self.data_info.reduction_config.reduction_size).fit(
+                    **fxn[0]).transform(self.features)
+            self.features_dim = np.shape(self.features)[1]
         return self
 
     def save(self, filename=''):
