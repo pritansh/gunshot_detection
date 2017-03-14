@@ -19,19 +19,11 @@ class Dataset:
             self.test_files[i] = files[train_size:]
 
     def __str__(self):
-        data_str = ''
+        data_str = 'Dataset -> '
         for i in range(0, len(self.class_dirs)):
-            data_str += str(i+1) + '->' + self.class_dirs[i] + ' (' + str(len(self.train_files[i]))
-            data_str += ',' + str(len(self.test_files[i])) + ')'
-            if i+1 < len(self.class_dirs):
-                data_str += '\n'
+            data_str += '\n\t' + str(i+1) + '->' + self.class_dirs[i]
+            data_str += ' ' + str((len(self.train_files[i]), len(self.test_files[i])))
         return data_str
 
     def __repr__(self):
-        data_str = ''
-        for i in range(0, len(self.class_dirs)):
-            data_str += str(i+1) + '->' + self.class_dirs[i] + ' (' + str(len(self.train_files[i]))
-            data_str += ',' + str(len(self.test_files[i])) + ')'
-            if i+1 < len(self.class_dirs):
-                data_str += '\n'
-        return data_str
+        return str(self)

@@ -113,10 +113,4 @@ class MLP:
         return network_str
 
     def __repr__(self):
-        network_str = 'Multilayer Perceptron ->'
-        network_str += '\nClasses -> ' + str(self.classes)
-        network_str += '\nInput -> ' + str(self.features_dim)
-        network_str += '\nHidden layer neurons -> '
-        for i in range(0, len(self.hidden_units)):
-            network_str += '\n\t' + str(i+1)+ ' -> ' + str(self.hidden_units[i])
-        return network_str
+        return str(self)
