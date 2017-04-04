@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from librosa import load, feature
 from sklearn.decomposition import PCA, IncrementalPCA as IPCA, KernelPCA as KPCA
 from sklearn.decomposition import FastICA as FICA, TruncatedSVD as TSVD, NMF, SparsePCA as SPCA
@@ -88,7 +89,7 @@ class Info:
 
 class AudioFeatures:
     ''''''
-    def __init__(self, files,
+    def __init__(self, files=None,
                  features_cfg=FeaturesConfig(
                      features=['mfcc'], mfcc_coeff=20, chroma_coeff=12, poly_order=1),
                  reduction_cfg=ReductionConfig(
@@ -140,10 +141,10 @@ class AudioFeatures:
         ''''''
         if class_dirs != None:
             self.load(filename=filename, class_dirs=class_dirs)
-            return
+            return copy.deepcopy(self)
         if filename != None:
             self.load(filename=filename)
-            return
+            return copy.deepcopy(self)
         done = 0
         total = np.sum(self.data_info.total_files)
         print 'Extracting Features ->'
@@ -223,8 +224,8 @@ class AudioFeatures:
         else:
             self.features = np.load(filename + '-features.npy')
             self.labels = np.load(filename + '-labels.npy')
-        self.features_dim = len(self.features[0])
-        self.classes = len(self.labels[0])
+        self.features_dim = np.shape(self.features[0])[0]
+        self.classes = np.shape(self.labels[0])[0]
 
     def __str__(self):
         feature_str = 'Audio Feature Vector for ' + str(self.classes) + ' Classes'

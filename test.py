@@ -8,7 +8,7 @@ fcd = dict(features=['mfcc'], mfcc_coeff=13)
 fc = ml.FeaturesConfig(**fcd)
 print fc
 
-rcd = dict(feature_reduction='lda')
+rcd = dict(feature_reduction='pca')
 rc = ml.ReductionConfig(**rcd)
 print rc
 
