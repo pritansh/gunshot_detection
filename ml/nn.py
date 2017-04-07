@@ -102,8 +102,9 @@ class MLP:
             '''cnf_max = confusion_matrix(y_true=true_label, y_pred=pred_label)
             print cnf_max'''
 
-            print true_label
-            print pred_label
+            #print true_label
+            #print pred_label
+            return test_accuracy
 
     def __str__(self):
         network_str = 'Multilayer Perceptron ->'
