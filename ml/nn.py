@@ -88,7 +88,7 @@ class MLP:
                                self.output_type: train.labels})
                 cost_history = np.append(cost_history, cost)
                 print_progress(iteration=epoch, total=epochs)
-            print test.features, test.labels
+            #print test.features, test.labels
             pred_label = sess.run(
                 tf.argmax(self.layers[len(self.layers)-1].out, 1),
                 feed_dict={self.input_type: test.features})
@@ -104,9 +104,6 @@ class MLP:
 
             print true_label
             print pred_label
-            '''
-            p = Plotter(size=(10, 8))
-            p.plot(data=cost_history, axis=[0,epochs, 0, cost_history])'''
 
     def __str__(self):
         network_str = 'Multilayer Perceptron ->'

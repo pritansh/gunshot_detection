@@ -126,16 +126,17 @@ class AudioFeatures:
             'plssvd': [dict(X=None), PLSSVD],
             'lda': [dict(X=None, y=None), LDA]
         }
-        self.data_info = Info(
-            files=files, features_config=features_cfg, reduction_config=reduction_cfg, info=[])
-        self.classes = len(files)
-        self.features_dim = 0
-        for ftr in features_cfg.features:
-            self.features_dim += self.functions[ftr][2]
-            self.data_info.info.append((ftr, self.functions[ftr][2]))
-        self.features = np.empty((0, self.features_dim))
-        self.labels = np.empty((0, self.classes))
-        self.class_labels = np.empty(0, dtype=int)
+        if files != None:
+            self.data_info = Info(
+                files=files, features_config=features_cfg, reduction_config=reduction_cfg, info=[])
+            self.classes = len(files)
+            self.features_dim = 0
+            for ftr in features_cfg.features:
+                self.features_dim += self.functions[ftr][2]
+                self.data_info.info.append((ftr, self.functions[ftr][2]))
+            self.features = np.empty((0, self.features_dim))
+            self.labels = np.empty((0, self.classes))
+            self.class_labels = np.empty(0, dtype=int)
 
     def extract(self, class_dirs=None, filename=None):
         ''''''
@@ -183,6 +184,7 @@ class AudioFeatures:
                 print_progress(iteration=done, total=total)
         self.features = np.array(self.features)
         self.labels = np.array(self.labels, dtype='int')
+        self.data_info.reduction_config.reduction_size = int(0.8 * self.features_dim)
         if self.data_info.reduction_config.feature_reduction != None:
             params = dict(X=self.features, y=self.class_labels)
             fxn = self.functions[self.data_info.reduction_config.feature_reduction]

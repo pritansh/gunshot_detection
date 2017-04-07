@@ -2,7 +2,7 @@ import ml
 
 d = ml.Dataset('./dataset')
 
-fcd = dict(features=['mfcc', 'zcr', 'poly', 'centroid' ], mfcc_coeff=20)
+fcd = dict(features=['mfcc', 'mel_spec'], mfcc_coeff=20)
 fc = ml.FeaturesConfig(**fcd)
 
 rc = ml.ReductionConfig()
