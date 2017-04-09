@@ -5,6 +5,7 @@ from sklearn.decomposition import PCA, IncrementalPCA as IPCA, KernelPCA as KPCA
 from sklearn.decomposition import FastICA as FICA, TruncatedSVD as TSVD, NMF, SparsePCA as SPCA
 from sklearn.cross_decomposition import CCA, PLSSVD
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.random_projection import GaussianRandomProjection as GRP, SparseRandomProjection as SRP
 
 from ml.progress import print_progress
 
@@ -27,11 +28,12 @@ def ind2vec(ind, classes=None):
 
 class FeaturesConfig:
     ''''''
-    def __init__(self, features, mfcc_coeff=20, chroma_coeff=12, poly_order=1):
+    def __init__(self, features, coeffs=dict(mfcc_coeff=20, chroma_coeff=12, poly_order=1, contrast_bands=6)):
         self.features = features
-        self.mfcc_coeff = mfcc_coeff
-        self.chroma_coeff = chroma_coeff
-        self.poly_order = poly_order
+        self.mfcc_coeff = coeffs.get('mfcc_coeff') or 20
+        self.chroma_coeff = coeffs.get('chroma_coeff') or 12
+        self.poly_order = coeffs.get('poly_order') or 1
+        self.contrast_bands = coeffs.get('contrast_bands') or 6
 
     def __str__(self):
         f_cfg_str = 'Features Config ->'
@@ -47,6 +49,10 @@ class FeaturesConfig:
             if len(coeff_str) != 0:
                 coeff_str += ', '
             coeff_str += str(('Poly', self.poly_order))
+        if 'contrast' in self.features:
+            if len(coeff_str) != 0:
+                coeff_str += ', '
+            coeff_str += str('Spectral Contrast', self.contrast_bands)
         if len(coeff_str) != 0:
             f_cfg_str += '\n\tCoeff -> (' + coeff_str + ')'
         return f_cfg_str
@@ -91,9 +97,10 @@ class AudioFeatures:
     ''''''
     def __init__(self, files=None,
                  features_cfg=FeaturesConfig(
-                     features=['mfcc'], mfcc_coeff=20, chroma_coeff=12, poly_order=1),
+                     features=['mfcc'], coeffs=dict(
+                         mfcc_coeff=20, chroma_coeff=12, poly_order=1, contrast_bands=6)),
                  reduction_cfg=ReductionConfig(
-                     feature_reduction='', reduction_size=10, vector_reduction='mean')):
+                     feature_reduction=None, reduction_size=10, vector_reduction='mean')):
         self.functions = {
             'c_stft': [dict(y=None, sr=None, n_chroma=None),
                        feature.chroma_stft, features_cfg.chroma_coeff],
@@ -106,7 +113,8 @@ class AudioFeatures:
             'rmse': [dict(y=None), feature.rmse, 1],
             'bandwidth': [dict(y=None, sr=None), feature.spectral_bandwidth, 1],
             'centroid': [dict(y=None, sr=None), feature.spectral_centroid, 1],
-            'contrast': [dict(y=None, sr=None), feature.spectral_contrast, 1],
+            'contrast': [dict(y=None, sr=None, n_bands=None),
+                         feature.spectral_contrast, features_cfg.contrast_bands],
             'rolloff': [dict(y=None, sr=None), feature.spectral_rolloff, 1],
             'poly': [dict(y=None, sr=None, order=None),
                      feature.poly_features, features_cfg.poly_order+1],
@@ -124,6 +132,8 @@ class AudioFeatures:
             'spca': [dict(X=None), SPCA],
             'cca': [dict(X=None), CCA],
             'plssvd': [dict(X=None), PLSSVD],
+            'grp': [dict(X=None), GRP],
+            'srp': [dict(X=None), SRP],
             'lda': [dict(X=None, y=None), LDA]
         }
         if files != None:
@@ -189,9 +199,13 @@ class AudioFeatures:
             params = dict(X=self.features, y=self.class_labels)
             fxn = self.functions[self.data_info.reduction_config.feature_reduction]
             fxn[0] = {k: params[k] for k, v in fxn[0].iteritems()}
-            self.features = fxn[1](
-                n_components=self.data_info.reduction_config.reduction_size).fit(
-                    **fxn[0]).transform(self.features)
+            feature_reduction = self.data_info.reduction_config.feature_reduction
+            if feature_reduction != 'grp' or feature_reduction != 'srp':
+                self.features = fxn[1](
+                    n_components=self.data_info.reduction_config.reduction_size).fit(
+                        **fxn[0]).transform(self.features)
+            else:
+                self.features = fxn[1]().fit_transform(self.features)
             self.features_dim = np.shape(self.features)[1]
         return self
 
