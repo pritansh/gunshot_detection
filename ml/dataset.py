@@ -3,7 +3,7 @@ import numpy as np
 
 class Dataset:
     ''''''
-    def __init__(self, directory_path='', dir_comb=[], train_perc=0.60):
+    def __init__(self, directory_path='', dir_comb=[], train_perc=0.75):
         self.class_dirs = os.listdir(directory_path)
         if len(dir_comb) > 0:
             self.class_dirs = dir_comb

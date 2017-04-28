@@ -18,16 +18,8 @@ def labels_to_class(labels):
 train.class_labels = np.array(labels_to_class(train.labels))
 test.class_labels = np.array(labels_to_class(test.labels))
 
-ncd = dict(features_dim=21, classes=2, hidden_units=[80, 100], learn_rate=0.01)
-nc = ml.NetworkConfig(**ncd)
-
-net = ml.MLP(nc)
-
-print net
-
-net.train(train=train, test=test, epochs=5000)
-
-svm = ml.SVM(features_dim=21, classes=2, svm_type='c', kernel='sigmoid', poly_degree=3)
+svm = ml.SVM(features_dim=21, classes=2, svm_type='c', kernel='poly', poly_degree=3)
 print svm
 
 svm.train(train=train, test=test)
+

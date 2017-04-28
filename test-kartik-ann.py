@@ -27,7 +27,3 @@ print net
 
 net.train(train=train, test=test, epochs=5000)
 
-svm = ml.SVM(features_dim=21, classes=2, svm_type='c', kernel='sigmoid', poly_degree=3)
-print svm
-
-svm.train(train=train, test=test)

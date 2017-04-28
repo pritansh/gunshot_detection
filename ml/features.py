@@ -136,7 +136,7 @@ class AudioFeatures:
             'srp': [dict(X=None), SRP],
             'lda': [dict(X=None, y=None), LDA]
         }
-        if files != None:
+        if files is not None:
             self.data_info = Info(
                 files=files, features_config=features_cfg, reduction_config=reduction_cfg, info=[])
             self.classes = len(files)
